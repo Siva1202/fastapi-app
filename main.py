@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI, File, UploadFile
 import pandas as pd
 import numpy as np
@@ -10,12 +11,13 @@ app = FastAPI()
 
 # Load models
 print("Loading models...")
-import os
+
 
 # Load models using environment variables
-random_forest_model = joblib.load(os.getenv("MODEL_PATH_RF", "random_forest_model.pkl"))
-xgb_model = joblib.load(os.getenv("MODEL_PATH_XGB", "xgboost_model.pkl"))
-autoencoder = tf.keras.models.load_model(os.getenv("MODEL_PATH_AE", "autoencoder_model.keras"))
+random_forest_model = joblib.load(os.getenv("MODEL_PATH_RF", "models/random_forest_model.pkl"))
+xgb_model = joblib.load(os.getenv("MODEL_PATH_XGB", "models/xgboost_model.pkl"))
+autoencoder = tf.keras.models.load_model(os.getenv("MODEL_PATH_AE", "models/autoencoder_model.h5"))
+
 
 print("Models loaded successfully!")
 
