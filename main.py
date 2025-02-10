@@ -6,6 +6,7 @@ import tensorflow as tf
 from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import FileResponse
 from sklearn.preprocessing import StandardScaler, PowerTransformer
+import uvicorn
 
 app = FastAPI()
 
@@ -17,6 +18,9 @@ autoencoder = tf.keras.models.load_model(os.getenv("MODEL_PATH_AUTOENCODER", "mo
 @app.get("/")
 def home():
     return {"message": "Anomaly Detection API Running Successfully"}
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
 
 # Upload & Predict API
 @app.post("/predict/")
