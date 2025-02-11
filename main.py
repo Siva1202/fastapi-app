@@ -7,13 +7,13 @@ from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import FileResponse
 from sklearn.preprocessing import StandardScaler, PowerTransformer
 import uvicorn
-
+from tensorflow.keras.losses import MeanSquaredError
 app = FastAPI()
 
 # Load models from environment variables
 random_forest_model = joblib.load(os.getenv("MODEL_PATH_RF", "models/random_forest_model.pkl"))
 xgb_model = joblib.load(os.getenv("MODEL_PATH_XGB", "models/xgboost_model.pkl"))
-autoencoder = tf.keras.models.load_model(os.getenv("MODEL_PATH_AUTOENCODER", "models/autoencoder_model.h5"))
+autoencoder = tf.keras.models.load_model(os.getenv("MODEL_PATH_AUTOENCODER", "models/autoencoder_model.h5"),custom_objects={"mse": MeanSquaredError()})
 
 @app.get("/")
 def home():
