@@ -30,13 +30,14 @@ export default function AnomalyDetector() {
     setLoading(true);
     setError("");
     try {
-      const response = await axios.post(`${BACKEND_URL}/predict/`, formData, {
+      const response = await axios.post("https://anomaly-detection-u6p2.onrender.com/predict", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
       if (response.data.predictions) {
         setPredictions(response.data.predictions);
-        setDownloadLink(`${BACKEND_URL}/download/`);
+      setDownloadLink("https://anomaly-detection-u6p2.onrender.com/download");
+
       } else {
         setError("Unexpected response from the server.");
       }
@@ -81,7 +82,7 @@ export default function AnomalyDetector() {
               </TableBody>
             </Table>
             {downloadLink && (
-              <a href={downloadLink} download className="mt-4 block text-blue-500 underline">
+              <a href={`https://anomaly-detection-u6p2.onrender.com/download?file=result.csv`} download className="mt-4 block text-blue-500 underline">
                 Download Results
               </a>
             )}
