@@ -8,7 +8,18 @@ from fastapi.responses import FileResponse
 from sklearn.preprocessing import StandardScaler, PowerTransformer
 import uvicorn
 from tensorflow.keras.losses import MeanSquaredError
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI()
+
+# Allow frontend to communicate with backend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Replace "*" with your frontend URL for security
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Load models from environment variables
 random_forest_model = joblib.load(os.getenv("MODEL_PATH_RF", "models/random_forest_model.pkl"))
