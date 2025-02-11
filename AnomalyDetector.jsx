@@ -12,7 +12,7 @@ export default function AnomalyDetector() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const BACKEND_URL = "http://localhost:8000"; // Change this to your deployed backend URL
+  const BACKEND_URL = "https://anomaly-detection-u6p2.onrender.com"; // Updated to your backend URL
 
   const handleFileChange = (event) => {
     setFile(event.target.files[0]);
