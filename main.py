@@ -24,7 +24,11 @@ app.add_middleware(
 # Load models from environment variables
 random_forest_model = joblib.load(os.getenv("MODEL_PATH_RF", "models/random_forest_model.pkl"))
 xgb_model = joblib.load(os.getenv("MODEL_PATH_XGB", "models/xgboost_model.pkl"))
-autoencoder = tf.keras.models.load_model(os.getenv("MODEL_PATH_AUTOENCODER", "models/autoencoder_model.h5"),custom_objects={"mse": MeanSquaredError()})
+autoencoder = tf.keras.models.load_model(os.getenv("MODEL_PATH_AUTOENCODER", "models/autoencoder_model.keras"), custom_objects={"mse": MeanSquaredError()})
+
+# Load scalers used in training
+scaler = joblib.load(os.getenv("SCALER_PATH", "models/scaler.pkl"))
+power_transformer = joblib.load(os.getenv("POWER_TRANSFORMER_PATH", "models/power_transformer.pkl"))
 
 @app.get("/")
 def home():
@@ -43,20 +47,16 @@ async def predict(file: UploadFile = File(...)):
     
     X_test = df[feature_columns]
 
-    scaler = StandardScaler()
-    X_test_scaled = scaler.fit_transform(X_test)
-
-    power_transformer = PowerTransformer()
-    X_test_transformed = power_transformer.fit_transform(X_test_scaled)
+    # Apply the same scaling and transformation used in training
+    X_test_scaled = scaler.transform(X_test)
+    X_test_transformed = power_transformer.transform(X_test_scaled)
 
     # Predict anomalies
     X_test_pred = autoencoder.predict(X_test_transformed)
     reconstruction_error = np.mean(np.abs(X_test_transformed - X_test_pred), axis=1)
 
-    mean_error = np.mean(reconstruction_error)
-    std_error = np.std(reconstruction_error)
-    threshold = mean_error + 1.5 * std_error
-
+    # Load predefined threshold from training
+    threshold = float(os.getenv("ANOMALY_THRESHOLD", "0.1"))
     y_pred_autoencoder = (reconstruction_error > threshold).astype(int)
 
     # Ensemble method
