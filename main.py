@@ -24,11 +24,7 @@ app.add_middleware(
 # Load models from environment variables
 random_forest_model = joblib.load(os.getenv("MODEL_PATH_RF", "models/random_forest_model.pkl"))
 xgb_model = joblib.load(os.getenv("MODEL_PATH_XGB", "models/xgboost_model.pkl"))
-autoencoder = tf.keras.models.load_model(os.getenv("MODEL_PATH_AUTOENCODER", "models/autoencoder_model.keras"), custom_objects={"mse": MeanSquaredError()})
-
-# Load scalers used in training
-scaler = joblib.load(os.getenv("SCALER_PATH", "models/scaler.pkl"))
-power_transformer = joblib.load(os.getenv("POWER_TRANSFORMER_PATH", "models/power_transformer.pkl"))
+autoencoder = tf.keras.models.load_model(os.getenv("MODEL_PATH_AUTOENCODER", "models/autoencoder_model.h5"), custom_objects={"mse": MeanSquaredError()})
 
 @app.get("/")
 def home():
@@ -47,24 +43,53 @@ async def predict(file: UploadFile = File(...)):
     
     X_test = df[feature_columns]
 
-    # Apply the same scaling and transformation used in training
-    X_test_scaled = scaler.transform(X_test)
-    X_test_transformed = power_transformer.transform(X_test_scaled)
+    # Advanced Feature Engineering
+    scaler = StandardScaler()
+    X_test_scaled = scaler.fit_transform(X_test)
+
+    power_transformer = PowerTransformer()
+    X_test_transformed = power_transformer.fit_transform(X_test_scaled)
+
+    X_test_transformed_np = np.array(X_test_transformed)
 
     # Predict anomalies
-    X_test_pred = autoencoder.predict(X_test_transformed)
-    reconstruction_error = np.mean(np.abs(X_test_transformed - X_test_pred), axis=1)
+    y_pred_rf = random_forest_model.predict(X_test_transformed_np)
+    y_pred_xgb = xgb_model.predict(X_test_transformed_np)
+    X_test_pred = autoencoder.predict(X_test_transformed_np)
+    reconstruction_error = np.mean(np.abs(X_test_transformed_np - X_test_pred), axis=1)
 
-    # Load predefined threshold from training
-    threshold = float(os.getenv("ANOMALY_THRESHOLD", "0.1"))
+    mean_error = np.mean(reconstruction_error)
+    std_error = np.std(reconstruction_error)
+    threshold = mean_error + 1.5 * std_error
+
     y_pred_autoencoder = (reconstruction_error > threshold).astype(int)
 
-    # Ensemble method
-    y_pred_rf = random_forest_model.predict(X_test_transformed)
-    y_pred_xgb = xgb_model.predict(X_test_transformed)
+    # Ensemble prediction
     ensemble_predictions = ((y_pred_rf + y_pred_xgb + y_pred_autoencoder) >= 2).astype(int)
-
     df["Anomaly_Prediction"] = ensemble_predictions
+
+    # Classify anomaly types
+    anomaly_types = []
+    for index, row in df.iterrows():
+        if row["Anomaly_Prediction"] == 1:
+            if row["Transaction_Amount"] > df["Transaction_Amount"].quantile(0.99):
+                anomaly_types.append("High Transaction Amount")
+            elif row["Return_Frequency"] > df["Return_Frequency"].quantile(0.99):
+                anomaly_types.append("High Return Frequency")
+            elif row["Transaction_Velocity"] > df["Transaction_Velocity"].quantile(0.99):
+                anomaly_types.append("Rapid Transactions")
+            elif row["Location_Distance"] > df["Location_Distance"].quantile(0.99):
+                anomaly_types.append("Suspicious Location")
+            elif row["High_Risk_Payment"] == 1:
+                anomaly_types.append("High-Risk Payment Method")
+            elif row["High_Return_User"] == 1:
+                anomaly_types.append("Frequent Return User")
+            else:
+                anomaly_types.append("General Anomaly")
+        else:
+            anomaly_types.append("Normal")
+    
+    df["Anomaly_Type"] = anomaly_types
 
     # Save results as CSV
     output_file = "ensemble_anomaly_predictions.csv"
